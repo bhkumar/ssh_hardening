@@ -1,0 +1,59 @@
+---
+ - name: SSH Server Hardening
+   hosts: ssh_hardening
+   tasks:
+           - name: Change SSH port number.
+             lineinfile:
+                     dest: "/etc/ssh/sshd_config"
+                     regexp: "^Port"
+                     line: "Port 2222"
+                     #  notify: "Restart sshd"
+
+           - name: Define ListenAddress.
+             lineinfile:
+                     dest: "/etc/ssh/sshd_config"
+                     regexp: "^ListenAddress"
+                     line: "ListenAddress 192.168.0.100"
+
+           - name: Define Protocol version.
+             lineinfile:
+                     dest: "/etc/ssh/sshd_config"
+                     regexp: "^Protocol"
+                     line: "Protocol 2"
+
+           - name: Setup Selinux for SSH Port.
+             seport:
+               ports: "2222"
+               proto: "tcp"
+               setype: "ssh_port_t"
+               state: "present"
+
+           - name: Copy SSH key.
+             authorized_key:
+               user: sanju
+               state: present
+               manage_dir: yes
+               key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"
+
+           - name: Comment this PasswordAuthentication in SSH config file.
+           replace:
+                     path: /etc/ssh/sshd_config
+                     regexp: "PasswordAuthentication yes"
+                     replace: "#PasswordAuthentication yes"
+
+           - name: Comment PermitRootLogin in SSH Config file.
+             replace:
+                     path: /etc/ssh/sshd_config
+                     regexp: "PermitRootLogin yes"
+                     replace: "#PermitRootLogin no"
+
+           - name: PasswordAuthentication change in SSH Config file.
+             lineinfile:
+                     dest: "/etc/ssh/sshd_config"
+                     regexp: "^PasswordAuthentication yes"
+                     line: "PasswordAuthentication no"
+
+           - name: Restart SSHD Service.
+             service:
+               name: sshd
+               state: restarted
